@@ -1,0 +1,74 @@
+/* Additional custom styling for Register component */
+
+/* Import Poppins font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f0f4f8;
+}
+
+/* Registration section styling */
+.register-section {
+  min-height: calc(100vh - 200px);
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+/* Primary color for brand elements */
+.text-primary {
+  color: rgb(15, 15, 110) !important;
+}
+
+.btn-primary {
+  background-color: rgb(15, 15, 110) !important;
+  border-color: rgb(15, 15, 110) !important;
+}
+
+.btn-outline-primary {
+  color: rgb(15, 15, 110) !important;
+  border-color: rgb(15, 15, 110) !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: rgb(15, 15, 110) !important;
+  color: white !important;
+}
+
+/* Custom header height to match original */
+header {
+  min-height: 90px;
+}
+
+/* Footer styling */
+footer {
+  border-top: 1px solid #eee;
+}
+
+/* Make form elements match the original style */
+.form-control, .form-select {
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+/* Card shadow to match original box-shadow style */
+.card.shadow {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Custom spacing for mobile devices */
+@media (max-width: 768px) {
+  .register-section {
+    padding-top: 1rem;
+  }
+  
+  header {
+    padding: 10px 20px;
+  }
+  
+  .card-body {
+    padding: 20px !important;
+  }
+}
