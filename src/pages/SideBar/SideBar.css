@@ -1,0 +1,61 @@
+/* src/components/Sidebar/Sidebar.css */
+.sidebar {
+    width: 250px;
+    background-color: #004a99;
+    height: calc(100vh - 90px); /* Chiều cao trừ đi header */
+    position: fixed;
+    top: 90px;
+    left: 0;
+    padding: 20px 0;
+    color: white;
+    overflow-y: auto; /* Cho phép cuộn dọc khi nội dung dài */
+    z-index: 100; /* Đảm bảo sidebar nằm trên các phần tử khác */
+}
+  
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    color: white !important;
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+}
+  
+.sidebar-link:hover, .sidebar-link.active {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+  
+.sidebar-link img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
+/* Thêm style cho thanh cuộn */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.content-area {
+    padding-left: 270px; /* 250px (sidebar width) + 20px (extra spacing) */
+    padding-top: 90px; /* Để không bị che bởi header */
+    width: 100%;
+}
+
+/* Đảm bảo footer không bị che */
+footer {
+    margin-left: 250px; /* Bằng với width của sidebar */
+    width: calc(100% - 250px);
+}

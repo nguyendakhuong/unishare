@@ -1,0 +1,53 @@
+/* Custom styles that aren't covered by Bootstrap */
+.sidebar {
+    width: 250px;
+    min-height: calc(100vh - 120px);
+}
+
+.sidebar .nav-link {
+    padding: 10px 0;
+    transition: background-color 0.3s;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Custom styles for the header */
+header .nav-link {
+    color: #333;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Custom styles for the footer */
+footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+footer .nav-link {
+    color: #007bff;
+    padding: 0.25rem 0;
+}
+
+footer .nav-link:hover {
+    text-decoration: underline;
+}
+
+/* Custom styles for the trash container */
+.trash-container img {
+    opacity: 0.5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+    }
+    
+    .container {
+        padding-top: 1rem;
+    }
+}

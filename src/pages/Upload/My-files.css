@@ -1,0 +1,154 @@
+/* Custom styles that aren't covered by Bootstrap */
+.sidebar {
+    width: 250px;
+    min-height: calc(100vh - 120px);
+}
+
+.sidebar .nav-link {
+    padding: 10px 0;
+    transition: background-color 0.3s;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Custom styles for the header */
+header .nav-link {
+    color: #333;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Custom styles for the file cards */
+.my-file-card {
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    margin: 10px;
+    transition: transform 0.2s;
+}
+
+.my-file-card:hover {
+    transform: scale(1.05);
+}
+
+.my-file-card .card-title {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}
+
+.my-file-card .card-text {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Custom styles for the footer */
+footer h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+footer .nav-link {
+    color: #007bff;
+    padding: 0.25rem 0;
+}
+
+footer .nav-link:hover {
+    text-decoration: underline;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+    }
+    
+    .container {
+        padding-top: 1rem;
+    }
+    
+    .my-file-card {
+        margin-bottom: 1rem;
+    }
+}
+
+.myfiles-content {
+  display: flex;
+  min-height: calc(100vh - 60px);
+  padding-top: 60px;
+  background-color: #f8f9fa;
+}
+
+.myfiles-container {
+  flex: 1;
+  padding: 2rem;
+  margin-left: 250px; /* Space for sidebar */
+}
+
+.myfiles-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2rem;
+}
+
+.file-container {
+  padding: 1rem;
+}
+
+.myfiles-card {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 1.5rem;
+  border: none;
+}
+
+.myfiles-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.myfiles-card .card-body {
+  padding: 1.5rem;
+}
+
+.myfiles-card .card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 1rem;
+}
+
+.myfiles-card .card-text {
+  color: #666;
+  font-size: 14px;
+}
+
+.myfiles-card img {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .myfiles-container {
+    margin-left: 0;
+    padding: 1rem;
+  }
+
+  .myfiles-content {
+    flex-direction: column;
+  }
+
+  .file-container {
+    padding: 0.5rem;
+  }
+}
