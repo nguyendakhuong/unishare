@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Nav, Navbar, Form, Button, Image } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Nav, Form, Button, Image, Alert } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Edit-Profile.css';
+import Header from '../Header/Header';
 import facebook  from '../../assets/images/facebook.png';
 import youtube  from '../../assets/images/youtube.png';
 import instagram  from '../../assets/images/Instagram.png';
@@ -17,15 +18,38 @@ import edit6 from '../../assets/images/image 9.png';
 import edit7 from '../../assets/images/image 10.png';
 import edit8 from '../../assets/images/image 11.png';
 import edit9 from '../../assets/images/image 12.png';
+
 const EditProfile = () => {
+  const navigate = useNavigate();
   const [showSubmenu, setShowSubmenu] = useState(true);
   const [formData, setFormData] = useState({
-    firstName: 'Nguyễn van a',
-    birthDate: '2003-12-21',
-    gender: 'Nam',
-    phone: '0917639460',
-    address: '216 Núi Thành, Phường Hòa Cường Bắc, Quận Hải Châu, Thành phố Đà Nẵng'
+    firstName: '',
+    birthDate: '',
+    gender: '',
+    phone: '',
+    address: ''
   });
+
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertVariant, setAlertVariant] = useState('success');
+
+  useEffect(() => {
+    // Lấy dữ liệu user từ localStorage
+    const userData = JSON.parse(localStorage.getItem('userData'));
+    if (userData) {
+      setFormData({
+        firstName: userData.name || '',
+        birthDate: userData.birthDate || '',
+        gender: userData.gender || '',
+        phone: userData.phone || '',
+        address: userData.address || ''
+      });
+    } else {
+      // Nếu không có dữ liệu user, chuyển về trang login
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const toggleSubmenu = () => {
     setShowSubmenu(!showSubmenu);
@@ -39,37 +63,70 @@ const EditProfile = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Form submitted with data:', formData);
-    alert('Thông tin đã được cập nhật thành công!');
+    try {
+      const cookies = document.cookie.split(';');
+      const xsrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
+      const csrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.split('=')[1]) : '';
+
+      const response = await fetch('http://localhost:8000/api/auth/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-XSRF-TOKEN': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include',
+        body: JSON.stringify(formData)
+      });
+
+      if (response.ok) {
+        // Cập nhật dữ liệu trong localStorage
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+        localStorage.setItem('userData', JSON.stringify({
+          ...userData,
+          ...formData
+        }));
+
+        setAlertMessage('Cập nhật thông tin thành công!');
+        setAlertVariant('success');
+        setShowAlert(true);
+
+        // Ẩn thông báo sau 2 giây
+        setTimeout(() => {
+          setShowAlert(false);
+          navigate('/account'); // Chuyển về trang Account sau khi cập nhật thành công
+        }, 2000);
+      } else {
+        const data = await response.json();
+        setAlertMessage(data.message || 'Cập nhật thất bại. Vui lòng thử lại!');
+        setAlertVariant('danger');
+        setShowAlert(true);
+      }
+    } catch (error) {
+      console.error('Update profile error:', error);
+      setAlertMessage('Có lỗi xảy ra. Vui lòng thử lại!');
+      setAlertVariant('danger');
+      setShowAlert(true);
+    }
   };
 
   return (
     <>
-      {/* Header */}
-      <Navbar expand="lg" className="bg-white shadow-sm py-2 fixed-top">
-        <Container>
-          <Navbar.Brand as={Link} to="/">
-            <img src={logo} alt="UNISHARE Logo" height="70" className="logo-img" />
-          </Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-navbar" />
-          <Navbar.Collapse id="main-navbar" className="justify-content-center">
-            <Nav className="mx-auto">
-              <Nav.Link as={Link} to="/" className="fw-bold mx-3">Trang chủ</Nav.Link>
-              <Nav.Link as={Link} to="/about" className="fw-bold mx-3">Về UNISHARE</Nav.Link>
-              <Nav.Link as={Link} to="/group" className="fw-bold mx-3">Group</Nav.Link>
-              <Nav.Link as={Link} to="/teachers" className="fw-bold mx-3">Giảng viên</Nav.Link>
-              <Nav.Link as={Link} to="/blog" className="fw-bold mx-3">Blog</Nav.Link>
-              <Nav.Link as={Link} to="/contact" className="fw-bold mx-3">Liên hệ</Nav.Link>
-              <Nav.Link as={Link} to="/notifications" className="mx-3">
-                <img src={chuong} alt="Thông báo" width="30" height="30" />
-              </Nav.Link>
-            </Nav>
-            <Link to="/login" className="btn btn-primary ms-lg-3">Đăng nhập →</Link>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
+      <Header />
+      {showAlert && (
+        <Alert 
+          variant={alertVariant} 
+          className="position-fixed top-0 start-50 translate-middle-x mt-5" 
+          style={{ zIndex: 9999 }}
+          onClose={() => setShowAlert(false)} 
+          dismissible
+        >
+          {alertMessage}
+        </Alert>
+      )}
 
       {/* Main Content */}
       <Container fluid className="main-container">
@@ -78,9 +135,9 @@ const EditProfile = () => {
           <Col md={3} className="sidebar">
             {/* Profile */}
             <div className="profile d-flex align-items-center">
-              <img src={edit1} alt="Nguyễn Văn A" className="profile-img rounded-circle" />
+              <img src={edit1} alt="Profile Picture" className="profile-img rounded-circle" />
               <div className="profile-info">
-                <p className="profile-name mb-1">Nguyễn Văn A</p>
+                <p className="profile-name mb-1">{formData.firstName}</p>
                 <Link to="/edit-profile" className="edit-profile-link d-flex align-items-center">
                   <img src={edit2} alt="Edit" width="20" height="20" className="me-1" /> Sửa hồ sơ
                 </Link>
@@ -97,7 +154,6 @@ const EditProfile = () => {
               
               {showSubmenu && (
                 <Nav className="flex-column submenu">
-                  
                   <Nav.Link as={Link} to="/edit-profile" className="submenu-item active">Chỉnh sửa</Nav.Link>
                   <Nav.Link as={Link} to="/change-password" className="submenu-item">Đổi mật khẩu</Nav.Link>
                 </Nav>
@@ -143,12 +199,13 @@ const EditProfile = () => {
               <Row className="mb-3">
                 <Col md={12}>
                   <Form.Group>
-                    <Form.Label className="fw-bold">Họ</Form.Label>
+                    <Form.Label className="fw-bold">Họ và tên</Form.Label>
                     <Form.Control
                       type="text"
                       name="firstName"
                       value={formData.firstName}
                       onChange={handleChange}
+                      required
                     />
                   </Form.Group>
                 </Col>
@@ -169,12 +226,16 @@ const EditProfile = () => {
                 <Col md={6}>
                   <Form.Group>
                     <Form.Label className="fw-bold">Giới tính</Form.Label>
-                    <Form.Control
-                      type="text"
+                    <Form.Select
                       name="gender"
                       value={formData.gender}
                       onChange={handleChange}
-                    />
+                    >
+                      <option value="">Chọn giới tính</option>
+                      <option value="Nam">Nam</option>
+                      <option value="Nữ">Nữ</option>
+                      <option value="Khác">Khác</option>
+                    </Form.Select>
                   </Form.Group>
                 </Col>
               </Row>
@@ -184,10 +245,11 @@ const EditProfile = () => {
                   <Form.Group>
                     <Form.Label className="fw-bold">Số điện thoại</Form.Label>
                     <Form.Control
-                      type="text"
+                      type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
+                      placeholder="Nhập số điện thoại"
                     />
                   </Form.Group>
                 </Col>
@@ -202,6 +264,7 @@ const EditProfile = () => {
                       name="address"
                       value={formData.address}
                       onChange={handleChange}
+                      placeholder="Nhập địa chỉ"
                     />
                   </Form.Group>
                 </Col>

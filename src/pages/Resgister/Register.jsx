@@ -1,29 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Register.css';
-import logo from '../../assets/images/logo.png';
-import chuong from '../../assets/images/chuong.png';
+import Header from '../Header/Header';
 import facebook from '../../assets/images/facebook.png';
 import youtube from '../../assets/images/youtube.png';
 import instagram from '../../assets/images/Instagram.png';
 import myImage from '../../assets/images/image 46.png';
 
-
 const Register = () => {
   const [formData, setFormData] = useState({
-    full_name: '',
-    phone: '',
+    name: '',
     email: '',
+    phone: '',
     password: '',
-    c_password: '',
-    role: '',
+    password_confirmation: '',
+    university: '',
+    department: '',
+    student_id: '',
+    bio: '',
     agree: false
   });
   
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [csrfToken, setCsrfToken] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  
+  // Update the CSRF token fetching
+  useEffect(() => {
+    const getCsrfToken = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/sanctum/csrf-cookie', {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          // Get the token from the cookie
+          const cookies = document.cookie.split(';');
+          const xsrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
+          if (xsrfCookie) {
+            const token = decodeURIComponent(xsrfCookie.split('=')[1]);
+            setCsrfToken(token);
+          }
+        } else {
+          console.error('Failed to get CSRF token:', response.status);
+          setError('Không thể kết nối đến server. Vui lòng đảm bảo server đang chạy.');
+        }
+      } catch (error) {
+        console.error('Error getting CSRF token:', error);
+        setError('Không thể kết nối đến server. Vui lòng đảm bảo server đang chạy.');
+      }
+    };
+
+    getCsrfToken();
+  }, []);
   
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -35,46 +73,58 @@ const Register = () => {
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
     
     // Basic validation
-    if (formData.password !== formData.c_password) {
+    if (formData.password !== formData.password_confirmation) {
       setError('Mật khẩu xác nhận không khớp!');
+      setIsLoading(false);
       return;
     }
     
     if (!formData.agree) {
       setError('Vui lòng chấp nhận điều khoản người dùng!');
+      setIsLoading(false);
       return;
     }
     
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/register", {
+      const response = await fetch("http://localhost:8000/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
+          "Accept": "application/json",
+          "X-XSRF-TOKEN": csrfToken,
+          "X-Requested-With": "XMLHttpRequest"
         },
-        body: JSON.stringify({
-          full_name: formData.full_name,
-          phone: formData.phone,
-          email: formData.email,
-          password: formData.password,
-          c_password: formData.c_password,
-          role: formData.role,
-        }),
+        credentials: 'include',
+        body: JSON.stringify(formData),
       });
       
       const data = await response.json();
       
-      if (data.success) {
-        setSuccess('Đăng ký thành công!');
-        setError('');
-        console.log(data.data);
+      if (response.ok) {
+        setSuccess('Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập...');
+        
+        // Chuyển hướng đến trang login sau 2 giây
+        setTimeout(() => {
+          navigate('/login');
+        }, 2000);
       } else {
-        setError('Lỗi: ' + JSON.stringify(data.message));
+        if (response.status === 422) {
+          const validationErrors = Object.values(data.errors).flat();
+          setError(validationErrors.join(', '));
+        } else {
+          setError(data.message || 'Có lỗi xảy ra. Vui lòng thử lại sau.');
+        }
       }
     } catch (error) {
-      setError('Có lỗi xảy ra: ' + error);
+      console.error('Register error:', error);
+      setError('Không thể kết nối đến server. Vui lòng kiểm tra:\n1. Server Laravel đang chạy\n2. URL API đúng\n3. CORS đã được cấu hình');
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -84,33 +134,7 @@ const Register = () => {
 
   return (
     <>
-      {/* Header */}
-      <header className="fixed-top bg-white shadow-sm py-2">
-        <Container>
-          <Row className="align-items-center">
-            <Col xs="auto">
-              <div className="logo">
-                <img src={logo} alt="UNISHARE Logo" height="70" />
-              </div>
-            </Col>
-            <Col>
-              <nav className="d-flex justify-content-center">
-                <ul className="list-unstyled d-flex mb-0">
-                  <li className="mx-3"><Link to="/" className="text-decoration-none fw-bold text-dark">Trang chủ</Link></li>
-                  <li className="mx-3"><Link to="/about" className="text-decoration-none fw-bold text-dark">Về UNISHARE</Link></li>
-                  <li className="mx-3"><Link to="/group" className="text-decoration-none fw-bold text-dark">Group</Link></li>
-                  <li className="mx-3"><Link to="/teachers" className="text-decoration-none fw-bold text-dark">Giảng viên</Link></li>
-                  <li className="mx-3"><Link to="/blog" className="text-decoration-none fw-bold text-dark">Blog</Link></li>
-                  <li className="mx-3"><Link to="/contact" className="text-decoration-none fw-bold text-dark">Liên hệ</Link></li>
-                  <li className="mx-3">
-                   <img src={chuong} alt="Thông báo" width="30" height="30" />
-                  </li>
-                </ul>
-              </nav>
-            </Col>
-          </Row>
-        </Container>
-      </header>
+      <Header />
 
       {/* Breadcrumb & Back Button */}
       <Container className="mt-5 pt-5">
@@ -144,9 +168,9 @@ const Register = () => {
                     <Form.Group className="mb-3">
                       <Form.Control 
                         type="text" 
-                        name="full_name"
+                        name="name"
                         placeholder="Họ và tên" 
-                        value={formData.full_name}
+                        value={formData.name}
                         onChange={handleChange}
                         required 
                       />
@@ -188,25 +212,53 @@ const Register = () => {
                     <Form.Group className="mb-3">
                       <Form.Control 
                         type="password" 
-                        name="c_password"
+                        name="password_confirmation"
                         placeholder="Xác nhận mật khẩu" 
-                        value={formData.c_password}
+                        value={formData.password_confirmation}
                         onChange={handleChange}
                         required 
                       />
                     </Form.Group>
-                    
+
                     <Form.Group className="mb-3">
-                      <Form.Select 
-                        name="role"
-                        value={formData.role}
+                      <Form.Control 
+                        type="text" 
+                        name="university"
+                        placeholder="Trường đại học" 
+                        value={formData.university}
                         onChange={handleChange}
-                        required
-                      >
-                        <option value="">Chọn vai trò</option>
-                        <option value="1">Học viên</option>
-                        <option value="2">Giảng viên</option>
-                      </Form.Select>
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Control 
+                        type="text" 
+                        name="department"
+                        placeholder="Khoa/Phòng ban" 
+                        value={formData.department}
+                        onChange={handleChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Control 
+                        type="text" 
+                        name="student_id"
+                        placeholder="Mã sinh viên" 
+                        value={formData.student_id}
+                        onChange={handleChange}
+                      />
+                    </Form.Group>
+
+                    <Form.Group className="mb-3">
+                      <Form.Control 
+                        as="textarea" 
+                        name="bio"
+                        placeholder="Giới thiệu bản thân" 
+                        value={formData.bio}
+                        onChange={handleChange}
+                        rows={3}
+                      />
                     </Form.Group>
                     
                     <Form.Group className="mb-3">
@@ -222,8 +274,13 @@ const Register = () => {
                     </Form.Group>
                     
                     <div className="d-grid">
-                      <Button variant="primary" type="submit" className="py-2">
-                        ĐĂNG KÝ
+                      <Button 
+                        variant="primary" 
+                        type="submit" 
+                        className="py-2"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Đang xử lý...' : 'ĐĂNG KÝ'}
                       </Button>
                     </div>
                   </Form>

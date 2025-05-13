@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Navbar, Nav, Button, Card } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import React, { useState, useCallback } from 'react';
+import { Container, Row, Col, Button, Card, Alert } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import './Loading.css';
+import Header from '../Header/Header';
+import Sidebar from '../SideBar/SideBar';
 
 // Import images (adjust paths based on your project structure)
 import logoImage from '../../assets/images/logo.png';
-import bellIcon from '../../assets/images/chuong.png';
 import uploadFileIcon from '../../assets/images/image 19.png';
 import uploadFolderIcon from '../../assets/images/image 20.png';
 import shareIcon2 from '../../assets/images/image 21.png';
@@ -14,53 +16,108 @@ import filePreviewImage from '../../assets/images/image53.png';
 import facebookIcon from '../../assets/images/facebook.png';
 import youtubeIcon from '../../assets/images/youtube.png';
 import instagramIcon from '../../assets/images/Instagram.png';
-import Sidebar from '../SideBar/SideBar';
+
 const Loading = () => {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+  const [recentUploads, setRecentUploads] = useState([]);
 
-  const handleFileUpload = (event) => {
+  // Xử lý kéo thả file
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = Array.from(e.dataTransfer.files);
+    handleFiles(files);
+  }, []);
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    handleFiles(files);
+  };
+
+  const handleFolderSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    handleFiles(files);
+  };
+
+  const handleFiles = async (files) => {
+    setSelectedFiles(files);
+    await uploadFiles(files);
+  };
+
+  const uploadFiles = async (files) => {
     setIsLoading(true);
     setUploadProgress(0);
-    
-    // Simulate file upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prevProgress) => {
-        if (prevProgress >= 100) {
-          clearInterval(interval);
-          setIsLoading(false);
-          return 100;
+
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files[]', file);
+    });
+
+    try {
+      const response = await axios.post('http://localhost:8000/api/student/documents', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(progress);
         }
-        return prevProgress + 10;
       });
-    }, 500);
+
+      setAlert({
+        show: true,
+        message: 'Tải lên thành công!',
+        type: 'success'
+      });
+
+      // Cập nhật danh sách tệp gần đây
+      fetchRecentUploads();
+
+      // Chuyển hướng sau khi upload thành công
+      setTimeout(() => {
+        navigate('/my-files');
+      }, 2000);
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      setAlert({
+        show: true,
+        message: error.response?.data?.message || 'Có lỗi xảy ra khi tải lên',
+        type: 'danger'
+      });
+    } finally {
+      setIsLoading(false);
+      setSelectedFiles([]);
+    }
+  };
+
+  // Lấy danh sách tệp đã tải lên gần đây
+  const fetchRecentUploads = async () => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/student/documents/recent', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      setRecentUploads(response.data.data.slice(0, 3)); // Lấy 3 tệp gần nhất
+    } catch (error) {
+      console.error('Error fetching recent uploads:', error);
+    }
   };
 
   return (
     <>
-      {/* Header */}
-      <Navbar expand="lg" className="bg-white shadow-sm py-2 fixed-top">
-        <Container>
-          <Navbar.Brand as={Link} to="/">
-            <img src={logoImage} alt="UNISHARE Logo" height="70" className="logo-img" />
-          </Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-navbar" />
-          <Navbar.Collapse id="main-navbar" className="justify-content-center">
-            <Nav className="mx-auto">
-              <Nav.Link as={Link} to="/" className="fw-bold mx-3">Trang chủ</Nav.Link>
-              <Nav.Link as={Link} to="/about" className="fw-bold mx-3">Về UNISHARE</Nav.Link>
-              <Nav.Link as={Link} to="/group" className="fw-bold mx-3">Group</Nav.Link>
-              <Nav.Link as={Link} to="/teachers" className="fw-bold mx-3">Giảng viên</Nav.Link>
-              <Nav.Link as={Link} to="/blog" className="fw-bold mx-3">Blog</Nav.Link>
-              <Nav.Link as={Link} to="/contact" className="fw-bold mx-3">Liên hệ</Nav.Link>
-              <Nav.Link as={Link} to="/notifications" className="mx-3">
-                <img src={bellIcon} alt="Thông báo" width="30" height="30" />
-              </Nav.Link>
-            </Nav>
-            <Link to="/login" className="btn btn-primary ms-lg-3">Đăng nhập →</Link>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
+      <Header />
 
       {/* Main Content */}
       <Container fluid className="main-container d-flex p-0">
@@ -69,62 +126,66 @@ const Loading = () => {
 
         {/* Main Content */}
         <div className="content-area">
-          {/* Search bar */}
-          
-
-          {/* Recommended Folders Section */}
-          {/* <div className="file-container">
-            {[
-              {
-                title: "Tài liệu Toán cao cấp",
-                description: "File chứa lý thuyết và bài tập."
-              },
-              {
-                title: "Tài liệu Toán cao cấp",
-                description: "File chứa lý thuyết và bài tập."
-              },
-              {
-                title: "Tài liệu Toán cao cấp",
-                description: "File chứa lý thuyết và bài tập."
-              },
-              {
-                title: "Tài liệu Toán cao cấp",
-                description: "File chứa lý thuyết và bài tập."
-              },
-              {
-                title: "Tài liệu Vật lý",
-                description: "File ôn tập cho kỳ thi."
-              },
-              {
-                title: "Tài liệu Hóa học",
-                description: "File hướng dẫn thực hành."
-              }
-            ].map((item, index) => (
-              <div className="file-card" key={index}>
-                <h3 className="card-title">{item.title}</h3>
-                <p className="card-description">{item.description}</p>
-              </div>
-            ))}
-          </div> */}
+          {alert.show && (
+            <Alert 
+              variant={alert.type} 
+              onClose={() => setAlert({ ...alert, show: false })} 
+              dismissible
+            >
+              {alert.message}
+            </Alert>
+          )}
 
           <div className="button-container">
-            <Button className="upload-button" onClick={handleFileUpload}>
-              <img src={uploadFileIcon} alt="Tải tệp lên" /> Tải tệp lên
+            <Button className="upload-button">
+              <label htmlFor="file-upload" className="mb-0 d-flex align-items-center">
+                <img src={uploadFileIcon} alt="Tải tệp lên" /> Tải tệp lên
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
             </Button>
-            <Button className="upload-button" onClick={handleFileUpload}>
-              <img src={uploadFolderIcon} alt="Tải thư mục" /> Tải thư mục
+
+            <Button className="upload-button">
+              <label htmlFor="folder-upload" className="mb-0 d-flex align-items-center">
+                <img src={uploadFolderIcon} alt="Tải thư mục" /> Tải thư mục
+              </label>
+              <input
+                id="folder-upload"
+                type="file"
+                webkitdirectory="true"
+                directory="true"
+                multiple
+                onChange={handleFolderSelect}
+                style={{ display: 'none' }}
+              />
             </Button>
+
             <Button className="upload-button">
               <img src={shareIcon2} alt="Chia sẻ" /> Chia sẻ
             </Button>
           </div>
-          {/* <h2 className="section-title">Thư mục đề xuất</h2> */}
 
-          <div className="upload-area">
+          <div 
+            className="upload-area"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
             {isLoading ? (
               <div className="loading-progress">
                 <div className="progress-bar" style={{ width: `${uploadProgress}%` }}></div>
                 <div className="progress-text">{uploadProgress}%</div>
+                <div className="files-info">
+                  {selectedFiles.map(file => (
+                    <div key={file.name} className="file-item">
+                      {file.name} ({Math.round(file.size / 1024)} KB)
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <>
@@ -135,17 +196,22 @@ const Loading = () => {
           </div>
 
           <div className="file-container">
+            <h3>Tệp đã tải lên gần đây</h3>
             <Row>
-              {[...Array(3)].map((_, index) => (
-                <Col md={4} key={`file-${index}`}>
+              {recentUploads.map((file, index) => (
+                <Col md={4} key={file.id || index}>
                   <Card className="file-card">
                     <Card.Body>
-                      <Card.Title>Ôn tập thi trắc nghiệm {index + 1}</Card.Title>
+                      <Card.Title>{file.title}</Card.Title>
                       <img 
-                        src={filePreviewImage} 
-                        alt={`Ôn tập thi trắc nghiệm ${index + 1}`}
+                        src={file.preview_url || filePreviewImage} 
+                        alt={file.title}
                         className="file-preview-img"
                       />
+                      <div className="file-info">
+                        <small>Kích thước: {Math.round(file.file_size / 1024)} KB</small>
+                        <small>Ngày tải lên: {new Date(file.created_at).toLocaleDateString()}</small>
+                      </div>
                     </Card.Body>
                   </Card>
                 </Col>

@@ -1,45 +1,95 @@
-import React from 'react';
-import { Container, Row, Col, Form, Button, Card, InputGroup, Nav, Navbar } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Form, Button, Card, InputGroup } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './HomePage.css';
+import Header from '../Header/Header';
 import logo from '../../assets/images/logo.png';
-import chuong from '../../assets/images/chuong.png';
 import myImage from '../../assets/images/image 46.png';
 import HomeImage from '../../assets/images/image 2.png';
 import Vector from '../../assets/images/Vector.png';
 import HomeImage1 from '../../assets/images/image 3.png';
 import HomeImage2 from '../../assets/images/hinh1.jpg';
 import HomeImage3 from '../../assets/images/image53.png';
-import facebook  from '../../assets/images/facebook.png';
-import youtube  from '../../assets/images/youtube.png';
-import instagram  from '../../assets/images/Instagram.png';
+import facebook from '../../assets/images/facebook.png';
+import youtube from '../../assets/images/youtube.png';
+import instagram from '../../assets/images/Instagram.png';
+import { documentAPI, groupAPI } from '../../services/api';
+
 const HomePage = () => {
+  const [documents, setDocuments] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Vui lòng đăng nhập để xem nội dung');
+          setLoading(false);
+          return;
+        }
+
+        // Fetch documents
+        const documentsResponse = await fetch('http://localhost/cappppp1/api.php/documents', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!documentsResponse.ok) {
+          if (documentsResponse.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('userData');
+            navigate('/login');
+            return;
+          }
+          throw new Error(`Server error: ${documentsResponse.status}`);
+        }
+
+        const documentsData = await documentsResponse.json();
+        if (documentsData.data && Array.isArray(documentsData.data)) {
+          setDocuments(documentsData.data);
+        } else {
+          setDocuments([]);
+        }
+
+        // Fetch featured groups
+        const groupsResponse = await fetch('http://localhost/cappppp1/api.php/groups', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (groupsResponse.ok) {
+          const groupsData = await groupsResponse.json();
+          setGroups(groupsData.data || []);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error('Error in fetchData:', err);
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [navigate]);
+
   return (
     <>
-      {/* Header */}
-      <Navbar expand="lg" className="fixed-top bg-white shadow-sm py-2">
-        <Container>
-          <Navbar.Brand as={Link} to="/">
-            <img src={logo} alt="UNISHARE Logo" height="70" className="logo-img" />
-          </Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-navbar" />
-          <Navbar.Collapse id="main-navbar" className="justify-content-center">
-            <Nav className="mx-auto">
-              <Nav.Link as={Link} to="/" className="fw-bold mx-3">Trang chủ</Nav.Link>
-              <Nav.Link as={Link} to="/about" className="fw-bold mx-3">Về UNISHARE</Nav.Link>
-              <Nav.Link as={Link} to="/group" className="fw-bold mx-3">Group</Nav.Link>
-              <Nav.Link as={Link} to="/teachers" className="fw-bold mx-3">Giảng viên</Nav.Link>
-              <Nav.Link as={Link} to="/blog" className="fw-bold mx-3">Blog</Nav.Link>
-              <Nav.Link as={Link} to="/contact" className="fw-bold mx-3">Liên hệ</Nav.Link>
-              <Nav.Link as={Link} to="/notifications" className="mx-3">
-                <img src={chuong} alt="Thông báo" width="30" height="30" />
-              </Nav.Link>
-            </Nav>
-            <Link to="/login" className="btn btn-outline-primary login-btn">Đăng nhập →</Link>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
+      <Header />
 
       {/* Search Container */}
       <Container className="search-container">
@@ -189,22 +239,28 @@ const HomePage = () => {
             </Col>
           </Row>
           
-          <Row>
-            {[1, 2, 3, 4].map((item) => (
-              <Col lg={3} md={6} className="mb-4" key={item}>
-                <Card className="group-card h-100 shadow-sm">
-                  <Card.Img variant="top" src={HomeImage2} />
-                  <Card.Body>
-                    <Card.Title>Nhóm Học Toeic Nâng Cao</Card.Title>
-                    <Card.Text><strong>Giáo Viên:</strong> Nguyễn Văn A</Card.Text>
-                    <div className="text-warning">
-                      ⭐⭐⭐⭐⭐ (5) 100
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+          {loading ? (
+            <div className="text-center">Đang tải dữ liệu...</div>
+          ) : error ? (
+            <div className="text-center text-danger">{error}</div>
+          ) : (
+            <Row>
+              {groups.map((group) => (
+                <Col lg={3} md={6} className="mb-4" key={group.id}>
+                  <Card className="group-card h-100 shadow-sm">
+                    <Card.Img variant="top" src={group.imageUrl || HomeImage2} />
+                    <Card.Body>
+                      <Card.Title>{group.name}</Card.Title>
+                      <Card.Text><strong>Giáo Viên:</strong> {group.teacherName}</Card.Text>
+                      <div className="text-warning">
+                        ⭐⭐⭐⭐⭐ ({group.rating}) {group.memberCount}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
         </Container>
       </section>
 
@@ -226,20 +282,26 @@ const HomePage = () => {
             </Col>
           </Row>
           
-          <Row className="document-row overflow-auto flex-nowrap pb-3">
-            {[1, 2, 3, 4, 5].map((item) => (
-              <Col md={3} key={item} className="document-col">
-                <Card className="document-card h-100 shadow-sm">
-                  <Card.Img variant="top" src={HomeImage3} />
-                  <Card.Body>
-                    <Card.Title className="fs-6">40 câu hỏi ngắn môn vĩ mô của Đại Học Duy Tân</Card.Title>
-                    <Card.Text className="small">Căn bản kinh tế vĩ mô</Card.Text>
-                    <div className="small fw-bold">❤️ 100%(45)</div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
+          {loading ? (
+            <div className="text-center">Đang tải dữ liệu...</div>
+          ) : error ? (
+            <div className="text-center text-danger">{error}</div>
+          ) : (
+            <Row className="document-row overflow-auto flex-nowrap pb-3">
+              {documents.map((document) => (
+                <Col md={3} key={document.id} className="document-col">
+                  <Card className="document-card h-100 shadow-sm">
+                    <Card.Img variant="top" src={document.imageUrl || HomeImage3} />
+                    <Card.Body>
+                      <Card.Title className="fs-6">{document.title}</Card.Title>
+                      <Card.Text className="small">{document.category}</Card.Text>
+                      <div className="small fw-bold">❤️ {document.likes}%({document.ratings})</div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              ))}
+            </Row>
+          )}
         </Container>
       </section>
 

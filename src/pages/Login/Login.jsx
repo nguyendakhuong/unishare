@@ -1,22 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, Alert } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './Login.css';
+import Header from '../Header/Header';
 import myImage from '../../assets/images/image 42.png';
 import chuong from '../../assets/images/chuong.png';
 import logo from '../../assets/images/logo.png';
 import facebook from '../../assets/images/facebook.png';
 import google from '../../assets/images/google.png';
 import github from '../../assets/images/github.png';
-    
+import { useAuth } from '../../context/AuthContext';
+import { authAPI } from '../../services/api';
+
 const Login = () => {
+  const { login, logout } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Hàm xử lý logout
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      localStorage.removeItem('token');
+      localStorage.removeItem('userData');
+      logout();
+      setSuccess('Đăng xuất thành công! Đang chuyển hướng...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+    } catch (error) {
+      console.error('Logout error:', error);
+      setError('Đăng xuất thất bại. Vui lòng thử lại sau.');
+    }
+  };
   
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,29 +52,57 @@ const Login = () => {
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
+    setIsLoading(true);
     
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await authAPI.login(formData);
+      const data = response.data;
       
-      const data = await response.json();
-      
-      if (data.success) {
-        // Store token or user data in localStorage if needed
+      if (data.token) {
+        // Lưu token
         localStorage.setItem('token', data.token);
-        // Redirect to home page or dashboard
-        window.location.href = '/';
-      } else {
-        setError('Đăng nhập thất bại: ' + (data.message || 'Vui lòng kiểm tra lại thông tin'));
+        
+        // Lưu dữ liệu user vào localStorage
+        const userData = {
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          role: data.user.role,
+          avatar: data.user.avatar
+        };
+        localStorage.setItem('userData', JSON.stringify(userData));
+        
+        // Sử dụng AuthContext để lưu thông tin user
+        login(userData);
+        
+        // Hiển thị thông báo thành công
+        setSuccess(`Xin chào ${userData.name}! Đăng nhập thành công! Đang chuyển hướng...`);
+        
+        // Chuyển hướng đến trang chủ sau 2 giây
+        setTimeout(() => {
+          navigate('/');
+        }, 2000);
       }
     } catch (error) {
-      setError('Có lỗi xảy ra: ' + error);
+      console.error('Login error:', error);
+      if (error.response) {
+        if (error.response.status === 422) {
+          const validationErrors = Object.values(error.response.data.errors).flat();
+          setError(validationErrors.join(', '));
+        } else if (error.response.status === 401) {
+          setError('Email hoặc mật khẩu không chính xác');
+        } else if (error.response.status === 403) {
+          setError('Tài khoản của bạn đã bị khóa');
+        } else {
+          setError(error.response.data.message || 'Có lỗi xảy ra. Vui lòng thử lại sau.');
+        }
+      } else {
+        setError('Không thể kết nối đến server. Vui lòng thử lại sau.');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -60,35 +112,7 @@ const Login = () => {
 
   return (
     <>
-      {/* Header */}
-      <header className="fixed-top bg-white shadow-sm py-2">
-        <Container>
-          <Row className="align-items-center">
-            <Col xs="auto">
-              <div className="logo">
-                <img src={logo} alt="UNISHARE Logo" height="70" />
-              </div>
-            </Col>
-            <Col>
-              <nav className="d-flex justify-content-center">
-                <ul className="list-unstyled d-flex mb-0">
-                  <li className="mx-3"><Link to="/" className="text-decoration-none fw-bold text-dark">Trang chủ</Link></li>
-                  <li className="mx-3"><Link to="/about" className="text-decoration-none fw-bold text-dark">Về UNISHARE</Link></li>
-                  <li className="mx-3"><Link to="/group" className="text-decoration-none fw-bold text-dark">Group</Link></li>
-                  <li className="mx-3"><Link to="/teachers" className="text-decoration-none fw-bold text-dark">Giảng viên</Link></li>
-                  <li className="mx-3"><Link to="/blog" className="text-decoration-none fw-bold text-dark">Blog</Link></li>
-                  <li className="mx-3"><Link to="/contact" className="text-decoration-none fw-bold text-dark">Liên hệ</Link></li>
-                  <li className="mx-3">
-                    <img src={chuong} alt="Thông báo" width="30" height="30" />
-
-                    
-                  </li>
-                </ul>
-              </nav>
-            </Col>
-          </Row>
-        </Container>
-      </header>
+      <Header />
 
       {/* Breadcrumb & Back Button */}
       <Container className="mt-5 pt-5">
@@ -113,6 +137,7 @@ const Login = () => {
                   <p className="text-center text-primary fw-bold mb-4">ĐĂNG NHẬP</p>
                   
                   {error && <Alert variant="danger">{error}</Alert>}
+                  {success && <Alert variant="success">{success}</Alert>}
                   
                   <Form onSubmit={handleSubmit}>
                     <Form.Group className="mb-3">
@@ -142,8 +167,8 @@ const Login = () => {
                     </div>
                     
                     <div className="d-grid">
-                      <Button variant="primary" type="submit" className="py-2">
-                        ĐĂNG NHẬP
+                      <Button variant="primary" type="submit" disabled={isLoading}>
+                        {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
                       </Button>
                     </div>
                   </Form>
@@ -152,7 +177,7 @@ const Login = () => {
                   <div className="d-flex justify-content-center gap-3 mb-4">
                     <img src={facebook} alt="Facebook" className="social-icon" />
                     <img src={google} alt="Google" className="social-icon" />
-                    <img src={github} alt="Apple" className="social-icon" />
+                    <img src={github} alt="Github" className="social-icon" />
                   </div>
                   
                   <p className="text-center">
@@ -170,51 +195,6 @@ const Login = () => {
           </Row>
         </Container>
       </section>
-
-      {/* Footer */}
-      {/*<footer className="bg-white py-4 mt-5">
-        <Container>
-          <div className="mb-4">
-            <img src={logo} alt="UNISHARE Logo" height="80" />
-          </div>
-          
-          <Row>
-            <Col md={4} className="mb-4 mb-md-0">
-              <h3 className="fs-5 mb-3">Thông Tin Liên Hệ</h3>
-              <p>📞 0917639460 | 0905817290</p>
-              <p>📧 nnnlt223344@gmail.com</p>
-              <p>📍 254 Nguyễn Lương Bằng, Đà Nẵng</p>
-            </Col>
-            
-            <Col md={4} className="mb-4 mb-md-0">
-              <h3 className="fs-5 mb-3">Các Danh Mục</h3>
-              <Row>
-                <Col xs={6}>
-                  <Link to="/about" className="d-block text-decoration-none text-primary mb-2">Về UNISHARE</Link>
-                  <Link to="/teachers" className="d-block text-decoration-none text-primary mb-2">Giảng Viên</Link>
-                  <Link to="/group" className="d-block text-decoration-none text-primary mb-2">Group</Link>
-                </Col>
-                <Col xs={6}>
-                  <Link to="/news" className="d-block text-decoration-none text-primary mb-2">Tin Tức</Link>
-                  <Link to="/support" className="d-block text-decoration-none text-primary mb-2">Hỗ Trợ</Link>
-                  <Link to="/documents" className="d-block text-decoration-none text-primary mb-2">Tài Liệu</Link>
-                </Col>
-              </Row>
-            </Col>
-            
-            <Col md={4}>
-              <h3 className="fs-5 mb-3">Theo Dõi Chúng Tôi</h3>
-              <div className="mb-3">
-                <img src={facebook} alt="Facebook" className="me-2" width="30" height="30" />
-                <img src={google} alt="Google" className="me-2" width="30" height="30" />
-                <img src={apple} alt="Apple" width="30" height="30" />
-              </div>
-              <Link to="/privacy" className="d-block text-decoration-none text-primary mb-2">Chính sách bảo mật</Link>
-              <Link to="/terms" className="d-block text-decoration-none text-primary mb-2">Điều khoản dịch vụ</Link>
-            </Col>
-          </Row>
-        </Container>
-      </footer>*/}
     </>
   );
 };

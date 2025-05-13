@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Form, Button, Navbar, Nav, NavDropdown, Alert } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Form, Button, Nav, Alert } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 import './Change-Password.css';
+import Header from '../Header/Header';
 import logo from '../../assets/images/logo.png';
 import chuong from '../../assets/images/chuong.png';
 import facebook  from '../../assets/images/facebook.png';
@@ -18,98 +19,138 @@ import change7 from '../../assets/images/image 10.png';
 
 
 const ChangePassword = () => {
-  // State for dropdown menu
+  const navigate = useNavigate();
   const [showSubmenu, setShowSubmenu] = useState(true);
-  
-  // State for form fields
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
   
-  // State for error messages
-  const [passwordError, setPasswordError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertVariant, setAlertVariant] = useState('success');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Toggle submenu visibility
+  useEffect(() => {
+    // Kiểm tra xem user đã đăng nhập chưa
+    const userData = JSON.parse(localStorage.getItem('userData'));
+    if (!userData) {
+      navigate('/login');
+    }
+  }, [navigate]);
+
   const toggleSubmenu = () => {
     setShowSubmenu(!showSubmenu);
   };
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setPasswordData({
       ...passwordData,
       [name]: value
     });
-    
-    // Clear error when user types
-    if (passwordError) {
-      setPasswordError('');
-    }
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      setPasswordError('Vui lòng điền đầy đủ thông tin');
-      return;
-    }
-    
+    setIsSubmitting(true);
+
+    // Kiểm tra mật khẩu mới và xác nhận mật khẩu
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError('Mật khẩu mới và xác nhận mật khẩu không khớp');
+      setAlertMessage('Mật khẩu mới và xác nhận mật khẩu không khớp');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      setIsSubmitting(false);
       return;
     }
-    
-    // Here you would typically send data to your backend
-    console.log('Password change submitted:', passwordData);
-    
-    // Show success message
-    setSuccess(true);
-    
-    // Reset form
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
-    
-    // Hide success message after 3 seconds
-    setTimeout(() => {
-      setSuccess(false);
-    }, 3000);
+
+    // Kiểm tra độ dài mật khẩu mới
+    if (passwordData.newPassword.length < 8) {
+      setAlertMessage('Mật khẩu mới phải có ít nhất 8 ký tự');
+      setAlertVariant('danger');
+      setShowAlert(true);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const cookies = document.cookie.split(';');
+      const xsrfCookie = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
+      const csrfToken = xsrfCookie ? decodeURIComponent(xsrfCookie.split('=')[1]) : '';
+      const userData = JSON.parse(localStorage.getItem('userData'));
+
+      const response = await fetch('http://localhost:8000/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-XSRF-TOKEN': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          token: localStorage.getItem('token'),
+          email: userData?.email,
+          password: passwordData.newPassword,
+          password_confirmation: passwordData.confirmPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAlertMessage('Đổi mật khẩu thành công!');
+        setAlertVariant('success');
+        setShowAlert(true);
+        
+        // Reset form
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+
+        // Chuyển về trang Account sau 2 giây
+        setTimeout(() => {
+          navigate('/account');
+        }, 2000);
+      } else {
+        // Xử lý lỗi validation từ server
+        if (response.status === 422) {
+          const errors = data.errors || {};
+          const errorMessage = Object.values(errors).flat().join('\n');
+          setAlertMessage(errorMessage || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại!');
+        } else {
+          setAlertMessage(data.message || 'Đổi mật khẩu thất bại. Vui lòng thử lại!');
+        }
+        setAlertVariant('danger');
+        setShowAlert(true);
+      }
+    } catch (error) {
+      console.error('Change password error:', error);
+      setAlertMessage('Có lỗi xảy ra. Vui lòng thử lại!');
+      setAlertVariant('danger');
+      setShowAlert(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <>
-      {/* Header */}
-      <Navbar expand="lg" className="bg-white shadow-sm py-2 fixed-top">
-        <Container>
-          <Navbar.Brand as={Link} to="/">
-            <img src={logo} alt="UNISHARE Logo" height="70" className="logo-img" />
-          </Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-navbar" />
-          <Navbar.Collapse id="main-navbar" className="justify-content-center">
-            <Nav className="mx-auto">
-              <Nav.Link as={Link} to="/" className="fw-bold mx-3">Trang chủ</Nav.Link>
-              <Nav.Link as={Link} to="/about" className="fw-bold mx-3">Về UNISHARE</Nav.Link>
-              <Nav.Link as={Link} to="/group" className="fw-bold mx-3">Group</Nav.Link>
-              <Nav.Link as={Link} to="/teachers" className="fw-bold mx-3">Giảng viên</Nav.Link>
-              <Nav.Link as={Link} to="/blog" className="fw-bold mx-3">Blog</Nav.Link>
-              <Nav.Link as={Link} to="/contact" className="fw-bold mx-3">Liên hệ</Nav.Link>
-              <Nav.Link as={Link} to="/notifications" className="mx-3">
-                <img src={chuong} alt="Thông báo" width="30" height="30" />
-              </Nav.Link>
-            </Nav>
-            <Link to="/login" className="btn btn-primary ms-lg-3">Đăng nhập →</Link>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
+      <Header />
+      {showAlert && (
+        <Alert 
+          variant={alertVariant} 
+          className="position-fixed top-0 start-50 translate-middle-x mt-5" 
+          style={{ zIndex: 9999 }}
+          onClose={() => setShowAlert(false)} 
+          dismissible
+        >
+          {alertMessage}
+        </Alert>
+      )}
 
       {/* Main Content */}
       <Container fluid className="main-container">
@@ -118,8 +159,7 @@ const ChangePassword = () => {
           <Col md={3} className="sidebar">
             {/* Profile */}
             <div className="profile d-flex align-items-center">
-              <img src={change1} alt="Nguyễn Văn A"  className="profile-img rounded-circle" 
-              />
+              <img src={change1} alt="Profile Picture" className="profile-img rounded-circle" />
               <div className="profile-info">
                 <p className="profile-name mb-1">Nguyễn Văn A</p>
                 <Link to="/edit-profile" className="edit-profile-link d-flex align-items-center">
@@ -136,7 +176,6 @@ const ChangePassword = () => {
               </div>
               {showSubmenu && (
                 <Nav className="flex-column submenu">
-                  
                   <Nav.Link as={Link} to="/edit-profile" className="submenu-item">Chỉnh sửa</Nav.Link>
                   <Nav.Link as={Link} to="/change-password" className="submenu-item active">Đổi mật khẩu</Nav.Link>
                 </Nav>
@@ -179,14 +218,6 @@ const ChangePassword = () => {
             </div>
 
             <Form onSubmit={handleSubmit} className="password-form">
-              {passwordError && (
-                <Alert variant="danger" className="mb-4">{passwordError}</Alert>
-              )}
-              
-              {success && (
-                <Alert variant="success" className="mb-4">Mật khẩu đã được thay đổi thành công!</Alert>
-              )}
-              
               <Form.Group className="mb-4">
                 <Form.Label className="fw-bold">Mật khẩu hiện tại:</Form.Label>
                 <Form.Control
@@ -195,6 +226,7 @@ const ChangePassword = () => {
                   value={passwordData.currentPassword}
                   onChange={handleChange}
                   required
+                  minLength={8}
                 />
               </Form.Group>
 
@@ -206,7 +238,11 @@ const ChangePassword = () => {
                   value={passwordData.newPassword}
                   onChange={handleChange}
                   required
+                  minLength={8}
                 />
+                <Form.Text className="text-muted">
+                  Mật khẩu phải có ít nhất 8 ký tự
+                </Form.Text>
               </Form.Group>
 
               <Form.Group className="mb-5">
@@ -217,12 +253,17 @@ const ChangePassword = () => {
                   value={passwordData.confirmPassword}
                   onChange={handleChange}
                   required
+                  minLength={8}
                 />
               </Form.Group>
 
               <div className="text-center">
-                <Button type="submit" className="change-password-btn">
-                  Đổi mật khẩu
+                <Button 
+                  type="submit" 
+                  className="change-password-btn"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Đang xử lý...' : 'Đổi mật khẩu'}
                 </Button>
               </div>
             </Form>

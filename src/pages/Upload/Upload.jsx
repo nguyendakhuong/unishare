@@ -1,43 +1,112 @@
-import React from 'react';
-import { Container, Row, Col, Navbar, Nav, Form, Card } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Form, Card, Button, ProgressBar, Alert } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 import './Upload.css';
-import logo from '../../assets/images/logo.png';
-import chuong from '../../assets/images/chuong.png';
+import Header from '../Header/Header';
 // Import the Sidebar component
 import Sidebar from '../SideBar/SideBar';
 // Import other images as needed for file previews, etc.
-import filePreviewImage from '../../assets/images/image53.png'; // Adjust path as needed
+import logo from '../../assets/images/logo.png';
+import filePreviewImage from '../../assets/images/image53.png';
 import facebookIcon from '../../assets/images/facebook.png';
 import youtubeIcon from '../../assets/images/youtube.png';
 import instagramIcon from '../../assets/images/Instagram.png';
 
 const Upload = () => {
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [recommendedFolders, setRecommendedFolders] = useState([]);
+  const [recommendedFiles, setRecommendedFiles] = useState([]);
+  const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+
+  // Fetch recommended content when component mounts
+  useEffect(() => {
+    fetchRecommendedContent();
+  }, []);
+
+  const fetchRecommendedContent = async () => {
+    try {
+      const [foldersResponse, filesResponse] = await Promise.all([
+        axios.get('http://localhost:3001/api/folders/recommended'),
+        axios.get('http://localhost:3001/api/files/recommended')
+      ]);
+
+      setRecommendedFolders(foldersResponse.data);
+      setRecommendedFiles(filesResponse.data);
+    } catch (error) {
+      console.error('Error fetching recommended content:', error);
+      setAlert({
+        show: true,
+        message: 'Không thể tải nội dung đề xuất. Vui lòng thử lại sau.',
+        type: 'danger'
+      });
+    }
+  };
+
+  const handleFileSelect = (event) => {
+    setSelectedFiles(Array.from(event.target.files));
+  };
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) {
+      setAlert({
+        show: true,
+        message: 'Vui lòng chọn file để tải lên',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const formData = new FormData();
+    selectedFiles.forEach(file => {
+      formData.append('files', file);
+    });
+
+    try {
+      await axios.post('http://localhost:3001/api/files/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(progress);
+        }
+      });
+
+      setAlert({
+        show: true,
+        message: 'Tải file lên thành công!',
+        type: 'success'
+      });
+      setSelectedFiles([]);
+      setUploadProgress(0);
+      fetchRecommendedContent(); // Refresh recommended content
+    } catch (error) {
+      console.error('Upload error:', error);
+      setAlert({
+        show: true,
+        message: 'Có lỗi xảy ra khi tải file. Vui lòng thử lại.',
+        type: 'danger'
+      });
+    }
+  };
+
+  const handleSearch = async (e) => {
+    setSearchQuery(e.target.value);
+    try {
+      const response = await axios.get(`http://localhost:3001/api/files/search?q=${e.target.value}`);
+      setRecommendedFiles(response.data);
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+  };
+
   return (
     <>
-      {/* Header */}
-      <Navbar expand="lg" className="bg-white shadow-sm py-2 fixed-top">
-        <Container>
-          <Navbar.Brand as={Link} to="/">
-            <img src={logo} alt="UNISHARE Logo" height="70" className="logo-img" />
-          </Navbar.Brand>
-          <Navbar.Toggle aria-controls="main-navbar" />
-          <Navbar.Collapse id="main-navbar" className="justify-content-center">
-            <Nav className="mx-auto">
-              <Nav.Link as={Link} to="/" className="fw-bold mx-3">Trang chủ</Nav.Link>
-              <Nav.Link as={Link} to="/about" className="fw-bold mx-3">Về UNISHARE</Nav.Link>
-              <Nav.Link as={Link} to="/group" className="fw-bold mx-3">Group</Nav.Link>
-              <Nav.Link as={Link} to="/teachers" className="fw-bold mx-3">Giảng viên</Nav.Link>
-              <Nav.Link as={Link} to="/blog" className="fw-bold mx-3">Blog</Nav.Link>
-              <Nav.Link as={Link} to="/contact" className="fw-bold mx-3">Liên hệ</Nav.Link>
-              <Nav.Link as={Link} to="/notifications" className="mx-3">
-                <img src={chuong} alt="Thông báo" width="30" height="30" />
-              </Nav.Link>
-            </Nav>
-            <Link to="/login" className="btn btn-primary ms-lg-3">Đăng nhập →</Link>
-          </Navbar.Collapse>
-        </Container>
-      </Navbar>
+      <Header />
 
       {/* Main Content */}
       <Container fluid className="main-container d-flex p-0">
@@ -46,31 +115,68 @@ const Upload = () => {
 
         {/* Main Content */}
         <div className="content-area">
+          {alert.show && (
+            <Alert 
+              variant={alert.type} 
+              onClose={() => setAlert({ ...alert, show: false })} 
+              dismissible
+            >
+              {alert.message}
+            </Alert>
+          )}
+
           <div className="content-header">
             <h1>Chào mừng bạn đến với <span className="highlight">UNISHARE!</span> 🎉</h1>
             <Form.Control 
               type="text" 
               placeholder="Tìm kiếm..." 
               className="search-bar"
+              value={searchQuery}
+              onChange={handleSearch}
             />
           </div>
+
+          {/* Upload Section */}
+          <section className="content-section">
+            <Card className="upload-card">
+              <Card.Body>
+                <Form.Group>
+                  <Form.Label>Chọn file để tải lên</Form.Label>
+                  <Form.Control
+                    type="file"
+                    multiple
+                    onChange={handleFileSelect}
+                    className="mb-3"
+                  />
+                </Form.Group>
+                {uploadProgress > 0 && (
+                  <ProgressBar 
+                    now={uploadProgress} 
+                    label={`${uploadProgress}%`} 
+                    className="mb-3" 
+                  />
+                )}
+                <Button 
+                  variant="primary" 
+                  onClick={handleUpload}
+                  disabled={selectedFiles.length === 0}
+                >
+                  Tải lên
+                </Button>
+              </Card.Body>
+            </Card>
+          </section>
 
           {/* Recommended Folders Section */}
           <section className="content-section">
             <h2>Thư mục đề xuất</h2>
             <Row className="file-container">
-              {[...Array(6)].map((_, index) => (
-                <Col md={4} key={`folder-${index}`}>
+              {recommendedFolders.map((folder, index) => (
+                <Col md={4} key={folder.id || index}>
                   <Card className="file-card mb-3">
                     <Card.Body>
-                      <Card.Title>
-                        {index < 4 ? "Tài liệu Toán cao cấp" : 
-                         index === 4 ? "Tài liệu Vật lý" : "Tài liệu Hóa học"}
-                      </Card.Title>
-                      <Card.Text>
-                        {index < 4 ? "File chứa lý thuyết và bài tập." : 
-                         index === 4 ? "File ôn tập cho kỳ thi." : "File hướng dẫn thực hành."}
-                      </Card.Text>
+                      <Card.Title>{folder.name}</Card.Title>
+                      <Card.Text>{folder.description}</Card.Text>
                     </Card.Body>
                   </Card>
                 </Col>
@@ -82,16 +188,14 @@ const Upload = () => {
           <section className="content-section">
             <h2>Tệp đề xuất</h2>
             <Row className="file-container">
-              {[...Array(6)].map((_, index) => (
-                <Col md={4} key={`file-${index}`}>
+              {recommendedFiles.map((file, index) => (
+                <Col md={4} key={file.id || index}>
                   <Card className="file-card mb-3">
                     <Card.Body className="text-center">
-                      <Card.Title>
-                        {`Ôn tập thi trắc nghiệm ${(index % 3) + 1}`}
-                      </Card.Title>
+                      <Card.Title>{file.name}</Card.Title>
                       <img 
-                        src={filePreviewImage} 
-                        alt={`Ôn tập thi trắc nghiệm ${(index % 3) + 1}`} 
+                        src={file.preview || filePreviewImage} 
+                        alt={file.name} 
                         className="file-preview-img"
                       />
                     </Card.Body>
