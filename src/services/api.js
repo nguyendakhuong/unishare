@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost/cappppp1/api.php'; // URL của PHP API
-
+// const API_URL = 'http://localhost/cappppp1/api.php'; // URL của PHP API
+const API_URL = 'http://127.0.0.1:8000/api'
 const api = axios.create({
   baseURL: API_URL,
   headers: {

@@ -59,7 +59,6 @@ const Login = () => {
     try {
       const response = await authAPI.login(formData);
       const data = response.data;
-      
       if (data.token) {
         // Lưu token
         localStorage.setItem('token', data.token);
